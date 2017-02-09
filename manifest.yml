@@ -1,0 +1,8 @@
+---
+applications:
+- name: midt
+  memory: 1G
+  path: target/midt-zuul-0.0.1-SNAPSHOT.jar
+  buildpack: java_buildpack_offline_latest
+  services:
+    - ehsdev-boeing-sso
