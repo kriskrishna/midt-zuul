@@ -1,12 +1,10 @@
 package com.boeing.zuul.sample.filters;
 
-import static org.assertj.core.api.Assertions.*;
-
-
+import com.netflix.zuul.context.RequestContext;
 import org.junit.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
 
-import com.netflix.zuul.context.RequestContext;
+import static org.assertj.core.api.Assertions.assertThat;
 
 
 
