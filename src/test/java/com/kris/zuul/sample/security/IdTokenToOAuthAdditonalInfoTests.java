@@ -1,4 +1,4 @@
-package com.boeing.zuul.sample.security;
+package com.kris.zuul.sample.security;
 
 import org.junit.Test;
 import static org.assertj.core.api.Assertions.*;

@@ -1,4 +1,4 @@
-package com.boeing.zuul.sample.filters;
+package com.kris.zuul.sample.filters;
 
 import com.netflix.zuul.context.RequestContext;
 import org.junit.Test;
