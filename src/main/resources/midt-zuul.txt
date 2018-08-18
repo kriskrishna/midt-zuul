@@ -1,0 +1,385 @@
+# /usr/local/etc/httpd/httpd.conf
+# apachectl start, stop, graceful
+#
+NameVirtualHost 10.208.28.30:7533
+NameVirtualHost 10.208.28.30:80
+NameVirtualHost 10.208.28.30:443
+
+Listen 10.208.28.30:7533
+Listen 10.208.28.30:80
+Listen 10.208.28.30:443
+
+<VirtualHost 10.208.28.30:7533>
+        ServerAdmin root@localhost
+	ServerName 10.208.28.30 
+	ServerName gpl2.corelogic.com
+
+	<IfModule mod_headers.c>
+        Header set Access-Control-Allow-Origin "*"
+	</IfModule>
+
+        # unauth/internal rewrite rules
+        <IfModule mod_rewrite.c>
+            RewriteEngine       On
+            RewriteLog          "/usr/local/apache2/logs/gpl-wms-rewrite.log"
+            RewriteLogLevel     2
+
+
+            ############### Block access ##################
+
+            # For /wms requests, block all except GetMap (so GetCapabilities requests are blocked)
+            RewriteCond %{REQUEST_URI}          /wms$                [NC]
+            RewriteCond %{REQUEST_METHOD}       GET                  [NC]
+            RewriteCond %{QUERY_STRING}         !(GetMap)            [NC]
+            RewriteRule ^(.*)$                  $1                   [F,L]
+
+            # For geoserver, block all wfs requests
+            RewriteCond %{REQUEST_URI}          /wfs$                [NC]
+            RewriteRule ^(.*)$                  $1                   [F,L]
+
+            # For /private requests, block all except ms-web-services
+            RewriteCond %{REQUEST_URI}          /private             [NC]
+            RewriteCond %{REQUEST_URI}          !(ms-web-services)   [NC]
+            RewriteRule ^(.*)$                  $1                   [F,L]
+
+            # Block unauthenticated access to pushpinlocator
+            RewriteCond %{REQUEST_URI}          /gpl-ws-pushpinlocator  [NC]
+            RewriteRule ^(.*)$                  $1                   [F,L]
+
+
+            ############### Geoserver ##################
+
+            # forward geoserver 1.6.3 HTTP POST wms requests to app server vip
+            RewriteCond %{REQUEST_URI}          /gis/v1.6.3/wms$     [NC]
+            RewriteCond %{REQUEST_METHOD}       POST                 [NC]
+            RewriteRule /gis/v1.6.3/wms(.*)$    http://10.208.222.23:7633/gis/v1.6.3/wms$1           [P,L,QSA]
+
+            # otherwise to Business Prod cache server vip
+            RewriteRule /gis/v1.6.3/wms(.*)$    http://10.208.222.22:3128/gis/v1.6.3/wms$1           [P,L,QSA]
+
+            # forward geoserver 2.0 requests to GeoServer 2.0 Prod Cache Server vip
+            RewriteRule /gis/v2.0.2/wms(.*)$    http://10.208.222.20:3128/gis/v2.0.2/wms$1         [P,L,QSA]
+
+
+            ############### WSDL Redirect ##################
+
+            # forward WSDL requests to GPL Resources on app server vip
+            RewriteCond %{REQUEST_URI}                gpl-ws-                                         [NC]
+            RewriteCond %{REQUEST_METHOD}             GET                                             [NC]
+            RewriteCond %{QUERY_STRING}               WSDL                                            [NC]
+            RewriteRule  /gpl-ws-(\S+)/v(\d+)/(\S+)   http://10.208.222.23:7633/private/gpl-resources/wsdl/$1.v$2.wsdl         [L,QSA,P]
+
+
+            ############### Catch all ##################
+
+            # forward all other requests to app server vip (tomcat 6) in business prod
+            RewriteRule /(.*)$                  http://10.208.222.23:7633/$1                        [P,L,QSA]
+
+        </IfModule>
+
+        ErrorLog  logs/gpl_error_log
+        LogLevel  warn
+        LogFormat "%h %l %u %t %D %T \"%r\" %>s %b \"%{Referer}i\" \"%{User-Agent}i\" %D " combine
+        CustomLog logs/gpl_access_log combined
+
+</VirtualHost>
+
+<VirtualHost 10.208.28.30:80>
+        ServerAdmin root@localhost
+        ServerName 10.208.28.30
+	ServerName gpl2.corelogic.com
+
+	<IfModule mod_headers.c>
+        Header set Access-Control-Allow-Origin "*"
+	</IfModule>
+
+        # unauth/internal rewrite rules
+        <IfModule mod_rewrite.c>
+            RewriteEngine       On
+            RewriteLog          "/usr/local/apache2/logs/gpl-wms-rewrite.log"
+            RewriteLogLevel     2
+
+
+            ############### Block access ##################
+
+            # For /wms requests, block all except GetMap (so GetCapabilities requests are blocked)
+            RewriteCond %{REQUEST_URI}          /wms$                [NC]
+            RewriteCond %{REQUEST_METHOD}       GET                  [NC]
+            RewriteCond %{QUERY_STRING}         !(GetMap)            [NC]
+            RewriteRule ^(.*)$                  $1                   [F,L]
+
+            # For geoserver, block all wfs requests
+            RewriteCond %{REQUEST_URI}          /wfs$                [NC]
+            RewriteRule ^(.*)$                  $1                   [F,L]
+
+            # For /private requests, block all except ms-web-services
+            RewriteCond %{REQUEST_URI}          /private             [NC]
+            RewriteCond %{REQUEST_URI}          !(ms-web-services)   [NC]
+            RewriteRule ^(.*)$                  $1                   [F,L]
+
+            # Block unauthenticated access to pushpinlocator
+            RewriteCond %{REQUEST_URI}          /gpl-ws-pushpinlocator  [NC]
+            RewriteRule ^(.*)$                  $1                   [F,L]
+
+
+            ############### Geoserver ##################
+
+            # forward geoserver 1.6.3 HTTP POST wms requests to app server vip
+            RewriteCond %{REQUEST_URI}          /gis/v1.6.3/wms$     [NC]
+            RewriteCond %{REQUEST_METHOD}       POST                 [NC]
+            RewriteRule /gis/v1.6.3/wms(.*)$    http://10.208.222.23:7633/gis/v1.6.3/wms$1           [P,L,QSA]
+
+            # otherwise to Business Prod cache server vip
+            RewriteRule /gis/v1.6.3/wms(.*)$    http://10.208.222.22:3128/gis/v1.6.3/wms$1           [P,L,QSA]
+
+            # forward geoserver 2.0 requests to GeoServer 2.0 Prod Cache Server vip
+            RewriteRule /gis/v2.0.2/wms(.*)$    http://10.208.222.20:3128/gis/v2.0.2/wms$1         [P,L,QSA]
+
+
+            ############### WSDL Redirect ##################
+
+            # forward WSDL requests to GPL Resources on app server vip
+            RewriteCond %{REQUEST_URI}                gpl-ws-                                         [NC]
+            RewriteCond %{REQUEST_METHOD}             GET                                             [NC]
+            RewriteCond %{QUERY_STRING}               WSDL                                            [NC]
+            RewriteRule  /gpl-ws-(\S+)/v(\d+)/(\S+)   http://10.208.222.23:7633/private/gpl-resources/wsdl/$1.v$2.wsdl         [L,QSA,P]
+
+
+            ############### Catch all ##################
+
+            # Requested by SWAT
+            RewriteCond %{REQUEST_URI}          !(/server-status)    [NC]
+
+            # forward all other requests to app server vip (tomcat 6) in business prod
+            RewriteRule /(.*)$                  http://10.208.222.23:7633/$1                        [P,L,QSA]
+
+        </IfModule>
+
+        ErrorLog  logs/gpl_error_log
+        LogLevel  warn
+        LogFormat "%h %l %u %t %D %T \"%r\" %>s %b \"%{Referer}i\" \"%{User-Agent}i\" %D " combine
+        CustomLog logs/gpl_access_log combined
+
+</VirtualHost>
+
+<VirtualHost 10.208.28.30:80>
+        ServerAdmin root@localhost
+        ServerName 10.208.28.30
+	ServerName gpl.corelogic.com
+	ServerAlias t0.gpl.corelogic.com
+	ServerAlias t1.gpl.corelogic.com
+	ServerAlias t2.gpl.corelogic.com
+	ServerAlias t3.gpl.corelogic.com
+        # block access to /probe except from 192.168.89 10.216 subnet
+        <Location /probe/>
+            Order deny,allow
+            Deny from all
+            Allow from 192.168.89 10.216
+        </Location>
+
+	<IfModule mod_headers.c>
+        Header set Access-Control-Allow-Origin "*"
+	</IfModule>
+
+        # auth/external rewrite rules
+        <IfModule mod_rewrite.c>
+            RewriteEngine       On
+            RewriteLog          "/usr/local/apache2/logs/gpl-wms-rewrite.log"
+            RewriteLogLevel     2
+
+
+            ############### Block access ##################
+
+            # Requested by SWAT
+            RewriteCond %{REQUEST_URI}          !(/server-status)    [NC]
+
+            # For /wms requests, block all except GetMap (so GetCapabilities requests are blocked)
+            RewriteCond %{REQUEST_URI}          /wms$                [NC]
+            RewriteCond %{REQUEST_METHOD}       GET                  [NC]
+            RewriteCond %{QUERY_STRING}         !(GetMap)            [NC]
+            RewriteRule ^(.*)$                  $1                   [F,L]
+
+            # For geoserver, block all wfs requests
+            RewriteCond %{REQUEST_URI}          /wfs$                [NC]
+            RewriteRule ^(.*)$                  $1                   [F,L]
+
+            # For /private requests, block all
+            RewriteCond %{REQUEST_URI}          /private             [NC]
+            RewriteRule ^(.*)$                  $1                   [F,L]
+
+
+            ############### Add auth=true ##################
+
+            # Add auth=true to WMS requests
+            RewriteCond %{QUERY_STRING}         GetMap               [NC]
+            RewriteCond %{QUERY_STRING}         !auth=true           [NC]
+            RewriteRule ^(.*)$                  $1?auth=true         [QSA]
+
+            # Add auth=true to web services POST requests, not GET requests
+            RewriteCond %{REQUEST_URI}          gpl-ws-              [NC]
+            RewriteCond %{REQUEST_METHOD}       POST                 [NC]
+            RewriteCond %{QUERY_STRING}         !auth=true           [NC]
+            RewriteRule ^(.*)$                  $1?auth=true         [QSA]
+
+
+            ############### Geoserver ##################
+
+            # forward geoserver 1.6.3 HTTP POST wms requests to app server vip
+            RewriteCond %{REQUEST_URI}          /gis/v1.6.3/wms$     [NC]
+            RewriteCond %{REQUEST_METHOD}       POST                 [NC]
+            RewriteRule /gis/v1.6.3/wms(.*)$    http://10.208.222.23:7633/gis/v1.6.3/wms$1           [P,L,QSA]
+
+            # otherwise to Business Prod cache server vip
+            RewriteRule /gis/v1.6.3/wms(.*)$    http://10.208.222.22:3128/gis/v1.6.3/wms$1           [P,L,QSA]
+
+            # forward geoserver 2.0 requests to GeoServer 2.0 Prod Cache Server vip
+            RewriteRule /gis/v2.0.2/wms(.*)$    http://10.208.222.20:3128/gis/v2.0.2/wms$1         [P,L,QSA]
+
+
+            ############### WSDL Redirect ##################
+
+            # forward WSDL requests to GPL Resources on app server vip
+            RewriteCond %{REQUEST_URI}                gpl-ws-                                         [NC]
+            RewriteCond %{REQUEST_METHOD}             GET                                             [NC]
+            RewriteCond %{QUERY_STRING}               WSDL                                            [NC]
+            RewriteRule  /gpl-ws-(\S+)/v(\d+)/(\S+)   http://10.208.222.23:7633/private/gpl-resources/wsdl/$1.v$2.wsdl         [L,QSA,P]
+
+
+            ############### Catch all ##################
+
+            # forward all other requests to auth app server vip (tomcat 6) in business production
+            RewriteRule /(.*)$                  http://10.208.222.23:7633/$1                        [P,L,QSA]
+
+        </IfModule>
+
+        ErrorLog  logs/gpl_auth_error_log
+        LogLevel  warn
+        LogFormat "%h %l %u %t %D %T \"%r\" %>s %b \"%{Referer}i\" \"%{User-Agent}i\" %D " combine
+        CustomLog logs/gpl_auth_access_log combined
+
+</VirtualHost>
+
+<IfDefine SSL>
+<VirtualHost 10.208.28.30:443>
+        SSLProxyEngine On
+        ServerName 10.208.28.30
+	ServerName gpl.corelogic.com
+	ServerAlias t0.gpl.corelogic.com
+	ServerAlias t1.gpl.corelogic.com
+	ServerAlias t2.gpl.corelogic.com
+	ServerAlias t3.gpl.corelogic.com
+
+	<IfModule mod_headers.c>
+        Header set Access-Control-Allow-Origin "*"
+	</IfModule>
+
+        # auth/external rewrite rules
+        <IfModule mod_rewrite.c>
+            RewriteEngine       On
+            RewriteLog          "/usr/local/apache2/logs/gpl-wms-ssl-rewrite.log"
+            RewriteLogLevel     2
+
+
+            ############### Block access ##################
+
+            # Requested by SWAT
+            RewriteCond %{REQUEST_URI}          !(/server-status)    [NC]
+
+            # For /wms requests, block all except GetMap (so GetCapabilities requests are blocked)
+            RewriteCond %{REQUEST_URI}          /wms$                [NC]
+            RewriteCond %{REQUEST_METHOD}       GET                  [NC]
+            RewriteCond %{QUERY_STRING}         !(GetMap)            [NC]
+            RewriteRule ^(.*)$                  $1                   [F,L]
+
+            # For geoserver, block all wfs requests
+            RewriteCond %{REQUEST_URI}          /wfs$                [NC]
+            RewriteRule ^(.*)$                  $1                   [F,L]
+
+            # For /private requests, block all
+            RewriteCond %{REQUEST_URI}          /private             [NC]
+            RewriteRule ^(.*)$                  $1                   [F,L]
+
+
+            ############### Add auth=true ##################
+
+            # Add auth=true to WMS requests
+            RewriteCond %{QUERY_STRING}         GetMap               [NC]
+            RewriteCond %{QUERY_STRING}         !auth=true           [NC]
+            RewriteRule ^(.*)$                  $1?auth=true         [QSA]
+
+            # Add auth=true to web services POST requests, not GET requests
+            RewriteCond %{REQUEST_URI}          gpl-ws-              [NC]
+            RewriteCond %{REQUEST_METHOD}       POST                 [NC]
+            RewriteCond %{QUERY_STRING}         !auth=true           [NC]
+            RewriteRule ^(.*)$                  $1?auth=true         [QSA]
+
+
+            ############### Geoserver ##################
+
+            # forward geoserver 1.6.3 HTTP POST wms requests to app server vip
+            RewriteCond %{REQUEST_URI}          /gis/v1.6.3/wms$     [NC]
+            RewriteCond %{REQUEST_METHOD}       POST                 [NC]
+            RewriteRule /gis/v1.6.3/wms(.*)$    http://10.208.222.23:7633/gis/v1.6.3/wms$1           [P,L,QSA]
+
+            # otherwise to Business Prod cache server vip
+            RewriteRule /gis/v1.6.3/wms(.*)$    http://10.208.222.22:3128/gis/v1.6.3/wms$1           [P,L,QSA]
+
+            # forward geoserver 2.0 requests to GeoServer 2.0 Prod Cache Server vip
+            RewriteRule /gis/v2.0.2/wms(.*)$    http://10.208.222.20:3128/gis/v2.0.2/wms$1         [P,L,QSA]
+
+
+            ############### WSDL Redirect ##################
+
+            # forward WSDL requests to GPL Resources on app server vip
+            RewriteCond %{REQUEST_URI}                gpl-ws-                                         [NC]
+            RewriteCond %{REQUEST_METHOD}             GET                                             [NC]
+            RewriteCond %{QUERY_STRING}               WSDL                                            [NC]
+            RewriteRule  /gpl-ws-(\S+)/v(\d+)/(\S+)   http://10.208.222.23:7633/private/gpl-resources/wsdl/$1.v$2.wsdl         [L,QSA,P]
+
+
+            ############### Catch all ##################
+
+            # forward all other requests to auth app server vip (tomcat 6) in business production
+            RewriteRule /(.*)$                  http://10.208.222.23:7633/$1                        [P,L,QSA]
+
+        </IfModule>
+
+        ErrorLog logs/gpl_auth_ssl_error_log
+        LogFormat "%h %l %u %t %D %T \"%r\" %>s %b \"%{Referer}i\" \"%{User-Agent}i\" %D " combine
+        TransferLog logs/gpl_auth_ssl_access_log
+
+        <Location /probe/>
+                Order deny,allow
+                Deny from all
+                Allow from 192.168.89 10.216
+        </Location>
+
+        SSLEngine on
+        #SSLCipherSuite ALL:!ADH:!EXPORT56:RC4+RSA:+HIGH:+MEDIUM:+LOW:+SSLv2:+EXP:+eNULL
+        SSLProtocol ALL -SSLv2 -SSLv3
+        SSLCipherSuite !DH:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-DSS-AES128-GCM-SHA256:kEDH+AESGCM:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA:ECDHE-ECDSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-DSS-AES128-SHA256:DHE-RSA-AES256-SHA256:DHE-DSS-AES256-SHA:DHE-RSA-AES256-SHA:ECDHE-RSA-DES-CBC3-SHA:ECDHE-ECDSA-DES-CBC3-SHA:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA256:AES256-SHA256:AES128-SHA:AES256-SHA:AES:CAMELLIA:DES-CBC3-SHA:!aNULL:!eNULL:!EXPORT:!DES:!RC4:!MD5:!PSK:!aECDH:!EDH-DSS-DES-CBC3-SHA:!EDH-RSA-DES-CBC3-SHA:!KRB5-DES-CBC3-SHA:!3DES
+
+        #SSLCertificateFile conf/certs/starfirstamres.pem
+        #SSLCertificateKeyFile conf/certs/wildcardfirstamres.key
+        #SSLCACertificateFile conf/certs/DigiCertCA.crt
+        
+	SSLCertificateFile conf/certs.wild.corelogic/certs/star_corelogic_com.crt
+        SSLCertificateKeyFile conf/certs.wild.corelogic/certs/star_corelogic_com.key
+        SSLCACertificateFile conf/certs.wild.corelogic/certs/DigiCertCA.crt
+
+        <Files ~ "\.(cgi|shtml|phtml|php3?)$">
+                SSLOptions +StdEnvVars
+        </Files>
+        <Directory "/usr/local/apache2/cgi-bin">
+                SSLOptions +StdEnvVars
+        </Directory>
+        SetEnvIf User-Agent ".*MSIE.*" \
+                 nokeepalive ssl-unclean-shutdown \
+                 downgrade-1.0 force-response-1.0
+
+        CustomLog logs/ssl_request_log \
+                 "%t %h %{SSL_PROTOCOL}x %{SSL_CIPHER}x \"%r\" %b"
+</VirtualHost>
+</IfDefine>
+
+
